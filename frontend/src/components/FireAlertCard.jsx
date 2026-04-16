@@ -26,7 +26,7 @@ const FireAlertCard = ({ alert, onClose }) => {
             </div>
             <p className="max-w-2xl text-lg leading-8 text-orange-50/95">Critical fire detected in room.</p>
             <p className="max-w-2xl text-base leading-7 text-white/70">Evacuate immediately and check the secured area.</p>
-            <p className="max-w-2xl text-sm leading-6 text-white/50">The fire event was captured by the backend in real time and propagated through Socket.IO without requiring a page refresh.</p>
+            <p className="max-w-2xl text-sm leading-6 text-white/50">The fire event was captured by the backend and surfaced automatically without requiring a manual refresh.</p>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-2xl border border-red-400/25 bg-red-500/10 p-4">

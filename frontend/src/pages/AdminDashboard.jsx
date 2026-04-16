@@ -1,24 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { io } from 'socket.io-client';
 import AlertsTable from '../components/AlertsTable';
 import SectionCard from '../components/SectionCard';
 import StatCard from '../components/StatCard';
 import { useAuth } from '../contexts/AuthContext';
-import { request, socketBase } from '../lib/api';
+import { request } from '../lib/api';
 import { isAlertEvent, isFireEvent, isIntrusionEvent } from '../lib/security';
-
-const mergeEventsById = (existingEvents, incomingEvents) => {
-  const eventMap = new Map();
-
-  [...incomingEvents, ...existingEvents].forEach((event) => {
-    const key = event.id || event._id;
-    if (key) {
-      eventMap.set(key, event);
-    }
-  });
-
-  return Array.from(eventMap.values()).sort((left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime());
-};
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -31,48 +17,46 @@ const AdminDashboard = () => {
   const [deletingEventId, setDeletingEventId] = useState('');
   const [clearingEvents, setClearingEvents] = useState(false);
 
-  const loadAdminData = async () => {
-    setLoading(true);
-    setError('');
-
-    try {
-      const [usersResponse, eventsResponse] = await Promise.all([
-        request('/api/users'),
-        request('/api/security/events?limit=200'),
-      ]);
-
-      setUsers(usersResponse.users || []);
-      setEvents(Array.isArray(eventsResponse.events) ? eventsResponse.events : []);
-    } catch (loadError) {
-      setError(loadError.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadAdminData();
-  }, []);
+    let isMounted = true;
 
-  useEffect(() => {
-    const socket = io(socketBase, {
-      auth: { token: localStorage.getItem('security-token') },
-    });
+    const syncAdminData = async (initial = false) => {
+      if (initial) {
+        setLoading(true);
+      }
 
-    socket.on('security:event', (event) => {
-      setEvents((current) => mergeEventsById(current, [event]));
-    });
+      try {
+        const [usersResponse, eventsResponse] = await Promise.all([
+          request('/api/users'),
+          request('/api/security/events?limit=200'),
+        ]);
 
-    socket.on('security:event-deleted', ({ id }) => {
-      setEvents((current) => current.filter((item) => item.id !== id));
-    });
+        if (!isMounted) {
+          return;
+        }
 
-    socket.on('security:events-cleared', () => {
-      setEvents((current) => current.filter((event) => !isAlertEvent(event)));
-    });
+        setUsers(usersResponse.users || []);
+        setEvents(Array.isArray(eventsResponse.events) ? eventsResponse.events : []);
+        setError('');
+      } catch (loadError) {
+        if (isMounted) {
+          setError(loadError.message);
+        }
+      } finally {
+        if (isMounted && initial) {
+          setLoading(false);
+        }
+      }
+    };
+
+    syncAdminData(true);
+    const intervalId = window.setInterval(() => {
+      syncAdminData(false);
+    }, 15000);
 
     return () => {
-      socket.disconnect();
+      isMounted = false;
+      window.clearInterval(intervalId);
     };
   }, []);
 

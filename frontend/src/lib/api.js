@@ -1,5 +1,4 @@
-const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-const socketBase = import.meta.env.VITE_SOCKET_URL || apiBase;
+const apiBase = (import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:5000')).replace(/\/$/, '');
 
 const request = async (path, options = {}) => {
   const token = localStorage.getItem('security-token');
@@ -22,4 +21,4 @@ const request = async (path, options = {}) => {
   return payload;
 };
 
-export { apiBase, request, socketBase };
+export { apiBase, request };

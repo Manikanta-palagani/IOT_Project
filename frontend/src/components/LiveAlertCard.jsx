@@ -50,9 +50,7 @@ const LiveAlertCard = ({ alert, onClose }) => {
               {getAlertCopy()}
             </p>
             <p className="max-w-2xl text-base leading-7 text-white/70">Stay alert and verify the secured area immediately.</p>
-            <p className="max-w-2xl text-sm leading-6 text-white/50">
-              The suspicious event was captured by the backend in real time and propagated through Socket.IO without requiring a page refresh.
-            </p>
+            <p className="max-w-2xl text-sm leading-6 text-white/50">The suspicious event was captured by the backend and surfaced automatically without requiring a manual refresh.</p>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-2xl border border-red-400/25 bg-red-500/10 p-4">
@@ -84,7 +82,7 @@ const LiveAlertCard = ({ alert, onClose }) => {
                 <p className="mt-3 text-sm leading-7 text-white/65">
                   {confirmingSecure
                     ? 'If this alert has been verified, confirm that the area is secure so the dashboard can return to secure mode.'
-                    : 'The intrusion event was captured by the backend in real time and propagated through Socket.IO without requiring a page refresh.'}
+                    : 'The intrusion event was captured by the backend and surfaced automatically without requiring a manual refresh.'}
                 </p>
               </div>
               <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-5">

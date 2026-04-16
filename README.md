@@ -18,19 +18,19 @@ Full-stack smart home security platform built with the MERN stack, Socket.io, Ta
 ## Frontend setup
 
 1. Copy `frontend/.env.example` to `frontend/.env`
-2. Set the API and Socket.io URLs
+2. Set `VITE_API_URL` only if you are pointing the frontend at a separate backend; the Vercel deployment can use the same-origin `/api` routes
 3. Install frontend dependencies and run the Vite app
 
 ## Vercel deployment
 
-This repository is configured to deploy the React frontend on Vercel from the repository root.
+This repository is configured to deploy the Vite frontend and the Express API together on Vercel from the repository root.
 
 1. Import the GitHub repository into Vercel
 2. Keep the project using the root directory so Vercel picks up `vercel.json`
-3. Add `VITE_API_URL` and `VITE_SOCKET_URL` in the Vercel project environment settings, pointing to your deployed backend API
+3. Add the backend environment variables in Vercel: `MONGODB_URI`, `JWT_SECRET`, `EMAIL_USER`, `EMAIL_PASS`, `ADMIN_SEED_EMAIL`, and `ADMIN_SEED_PASSWORD`
 4. Deploy the frontend build output from `frontend/dist`
 
-The backend Express and Socket.io server should be deployed separately on a Node-compatible host.
+The dashboard uses automatic HTTP refresh on Vercel instead of a long-lived Socket.IO connection, which keeps the deployment compatible with serverless hosting.
 
 ## ESP32 setup
 

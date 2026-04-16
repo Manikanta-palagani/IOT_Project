@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { io } from 'socket.io-client';
 import AnalyticsCharts from '../components/AnalyticsCharts';
 import EventTimeline from '../components/EventTimeline';
 import FireAlertCard from '../components/FireAlertCard';
@@ -8,21 +7,8 @@ import SecurityStatusPanel from '../components/SecurityStatusPanel';
 import SectionCard from '../components/SectionCard';
 import StatCard from '../components/StatCard';
 import { useAuth } from '../contexts/AuthContext';
-import { apiBase, request, socketBase } from '../lib/api';
+import { apiBase, request } from '../lib/api';
 import { bucketByDay, bucketByHour, deriveSecurityState, formatDateTime, formatRelativeTime, isAlertEvent, isFireEvent, isIntrusionEvent } from '../lib/security';
-
-const mergeEventsById = (existingEvents, incomingEvents) => {
-  const eventMap = new Map();
-
-  [...incomingEvents, ...existingEvents].forEach((event) => {
-    const key = event.id || event._id;
-    if (key) {
-      eventMap.set(key, event);
-    }
-  });
-
-  return Array.from(eventMap.values()).sort((left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime());
-};
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -41,7 +27,7 @@ const Dashboard = () => {
   useEffect(() => {
     let isMounted = true;
 
-    const loadEvents = async () => {
+    const syncDashboardData = async (initial = false) => {
       try {
         const response = await request('/api/security/events?limit=200');
         if (!isMounted) {
@@ -50,70 +36,26 @@ const Dashboard = () => {
 
         setEvents(Array.isArray(response.events) ? response.events : []);
         setDevices(Array.isArray(response.devices) ? response.devices : []);
+        setError('');
       } catch (requestError) {
         if (isMounted) {
           setError(requestError.message);
         }
       } finally {
-        if (isMounted) {
+        if (isMounted && initial) {
           setLoading(false);
         }
       }
     };
 
-    loadEvents();
+    syncDashboardData(true);
+    const intervalId = window.setInterval(() => {
+      syncDashboardData(false);
+    }, 15000);
 
     return () => {
       isMounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    const socket = io(socketBase, {
-      auth: { token: localStorage.getItem('security-token') },
-    });
-
-    socket.on('security:event', (event) => {
-      setEvents((current) => mergeEventsById(current, [event]));
-
-      if (event.device) {
-        setDevices((current) => [event.device, ...current.filter((device) => device.deviceId !== event.device.deviceId)]);
-      }
-
-      if (isFireEvent(event)) {
-        setFireAlert(event);
-      } else if (isIntrusionEvent(event)) {
-        setLiveAlert(event);
-        setEmergencyAlert(event);
-        setAlertStep('alert');
-        setManualSecureOverride(false);
-      }
-    });
-
-    socket.on('security:event-deleted', ({ id }) => {
-      setEvents((current) => current.filter((item) => item.id !== id));
-      setLiveAlert((current) => (current?.id === id ? null : current));
-      setEmergencyAlert((current) => (current?.id === id ? null : current));
-      setFireAlert((current) => (current?.id === id ? null : current));
-    });
-
-    socket.on('security:events-cleared', () => {
-      setEvents((current) => current.filter((event) => !isAlertEvent(event)));
-      setLiveAlert(null);
-      setEmergencyAlert(null);
-      setFireAlert(null);
-      setAlertStep('idle');
-      setManualSecureOverride(false);
-    });
-
-    socket.on('security:snapshot', (snapshot) => {
-      if (snapshot?.device) {
-        setDevices((current) => [snapshot.device, ...current.filter((device) => device.deviceId !== snapshot.device.deviceId)]);
-      }
-    });
-
-    return () => {
-      socket.disconnect();
+      window.clearInterval(intervalId);
     };
   }, []);
 
@@ -385,7 +327,7 @@ const Dashboard = () => {
         <StatCard
           label="Latest Event Time"
           value={loading ? '...' : summary.latestTime}
-          detail={error || 'Socket.io keeps the dashboard synchronized with the backend.'}
+          detail={error || 'Automatic refresh keeps the dashboard synchronized with the backend.'}
           tone="amber"
           emphasis="Timestamp"
         />
