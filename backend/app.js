@@ -8,15 +8,18 @@ const userRoutes = require('./routes/userRoutes');
 const { createAlert, getEvents } = require('./controllers/securityController');
 
 const app = express();
-const defaultCorsOrigin = 'http://localhost:5173';
-
-const corsOptions = {
-  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : [defaultCorsOrigin],
-  credentials: true,
-};
 
 app.use(helmet());
-app.use(cors(corsOptions));
+app.use(cors({
+  origin: [
+    "https://smarthomesecurity-8x4ub3h3y-manikantas-projects-8b9f4606.vercel.app",
+    "http://localhost:5173"
+  ],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
+app.options('*', cors());
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan('dev'));
 
