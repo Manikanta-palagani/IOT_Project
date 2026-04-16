@@ -1,0 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Share+Tech+Mono&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(239, 68, 68, 0.14), transparent 28%),
+    radial-gradient(circle at top right, rgba(250, 204, 21, 0.12), transparent 26%),
+    radial-gradient(circle at bottom center, rgba(14, 165, 233, 0.08), transparent 28%),
+    linear-gradient(180deg, #020617 0%, #050816 55%, #02050c 100%);
+  color: #e5eef6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.blink-badge {
+  animation: blink 1s infinite;
+}
+
+@keyframes emergencyGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.18), 0 0 30px rgba(239, 68, 68, 0.22);
+  }
+
+  50% {
+    box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.4), 0 0 55px rgba(248, 113, 113, 0.45);
+  }
+}
+
+.emergency-glow {
+  animation: emergencyGlow 1.1s infinite;
+}
+
+*::selection {
+  background: rgba(239, 68, 68, 0.35);
+  color: #fff;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
