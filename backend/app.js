@@ -9,7 +9,6 @@ const { createAlert, getEvents } = require('./controllers/securityController');
 
 const app = express();
 
-app.use(helmet());
 app.use(cors({
   origin: [
     "https://smarthomesecurity-8x4ub3h3y-manikantas-projects-8b9f4606.vercel.app",
@@ -20,6 +19,8 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 app.options('*', cors());
+
+app.use(helmet());
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan('dev'));
 
