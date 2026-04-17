@@ -1,12 +1,6 @@
 {
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "https://iot-project-chi.vercel.app/api/$1"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+  "version": 2,
+  "routes": [
+    { "src": "/(.*)", "dest": "/backend/api/index.js" }
   ]
 }
