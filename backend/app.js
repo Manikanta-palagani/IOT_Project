@@ -12,6 +12,7 @@ const app = express();
 app.use(cors({
   origin: [
     "https://smarthomesecurity-8x4ub3h3y-manikantas-projects-8b9f4606.vercel.app",
+    "https://smarthomesecurity-rust.vercel.app",
     "http://localhost:5173"
   ],
   credentials: true,
