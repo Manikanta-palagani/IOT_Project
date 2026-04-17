@@ -9,17 +9,28 @@ const { createAlert, getEvents } = require('./controllers/securityController');
 
 const app = express();
 
+const allowedOrigins = [
+  "http://localhost:5173"
+];
+
 app.use(cors({
-  origin: [
-    "https://smarthomesecurity-8x4ub3h3y-manikantas-projects-8b9f4606.vercel.app",
-    "https://smarthomesecurity-rust.vercel.app",
-    "http://localhost:5173"
-  ],
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+
+    if (
+      allowedOrigins.includes(origin) ||
+      origin.endsWith(".vercel.app")
+    ) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
-app.options('*', cors());
+app.options("*", cors());
 
 app.use(helmet());
 app.use(express.json({ limit: '1mb' }));
