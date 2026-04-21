@@ -42,7 +42,7 @@ const EventTimeline = ({ events }) => {
                   {isFireEvent(event) ? '🔥 FIRE ALERT' : isIntrusionEvent(event) ? 'Suspicious Activity' : 'Heartbeat'}
                 </div>
                 <h3 className={`mt-3 text-base font-semibold ${isFireEvent(event) ? 'text-rose-700' : 'text-slate-900'}`}>{isFireEvent(event) ? `🔥 ${getEventLabel(event)}` : isIntrusionEvent(event) ? `⚠ ${getEventLabel(event)}` : '🟢 Area Secure'}</h3>
-                <p className="mt-1 text-sm text-slate-600">Zone: {event.zone} · Device: {event.deviceId}</p>
+                <p className="mt-1 text-sm text-slate-600">Zone: {event.zone}</p>
               </div>
               <p className="text-sm text-slate-500">{formatDateTime(event.timestamp, event.displayTimestamp)}</p>
             </div>

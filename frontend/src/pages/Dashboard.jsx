@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import AnalyticsCharts from '../components/AnalyticsCharts';
-import AlertModal from '../components/AlertModal';
 import EventTimeline from '../components/EventTimeline';
-import FireAlertCard from '../components/FireAlertCard';
 import SecurityStatusPanel from '../components/SecurityStatusPanel';
 import SectionCard from '../components/SectionCard';
 import StatCard from '../components/StatCard';
@@ -15,17 +13,16 @@ const Dashboard = () => {
   const { user } = useAuth();
   const [events, setEvents] = useState([]);
   const [devices, setDevices] = useState([]);
-  const [pendingAlerts, setPendingAlerts] = useState([]);
+  const [alerts, setAlerts] = useState([]);
   const [activeAlert, setActiveAlert] = useState(null);
-  const [showAlert, setShowAlert] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
+  const [showStatusBox, setShowStatusBox] = useState(true);
   const [dismissedAlertId, setDismissedAlertId] = useState('');
-  const [alertResolution, setAlertResolution] = useState('secure');
+  const [areaStatus, setAreaStatus] = useState('secure');
   const [resolvingAlertStatus, setResolvingAlertStatus] = useState('');
-  const [fireAlert, setFireAlert] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const socketRef = useRef(null);
-  const alertHideTimeoutRef = useRef(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -70,48 +67,46 @@ const Dashboard = () => {
         return null;
       }
 
-      const id = alert.id || alert._id;
-      return id ? { ...alert, id, _id: id } : null;
+      const id = String(alert.id || alert._id || '');
+      if (!id) {
+        return null;
+      }
+
+      const eventType = String(alert.eventType || alert.type || '').toLowerCase();
+      const normalizedEventType = eventType === 'theft' ? 'intrusion' : eventType;
+
+      return {
+        ...alert,
+        id,
+        _id: id,
+        eventType: normalizedEventType,
+        type: normalizedEventType || alert.type || '',
+        status: String(alert.status || 'pending').toLowerCase(),
+      };
     };
 
-    const syncPendingAlerts = async (initial = false) => {
+    const sortAlerts = (nextAlerts) => [...nextAlerts].sort((left, right) => new Date(right.timestamp) - new Date(left.timestamp));
+
+    const syncPendingAlerts = async () => {
       try {
         const response = await request('/api/alerts?status=pending');
 
-        if (!isMounted) {
-          return;
-        }
+        const nextAlerts = Array.isArray(response.alerts)
+          ? sortAlerts(response.alerts.map(normalizeAlert).filter(Boolean))
+          : [];
 
-        const nextAlerts = Array.isArray(response.alerts) ? response.alerts.map(normalizeAlert).filter(Boolean) : [];
-        setPendingAlerts(nextAlerts);
-        setActiveAlert((current) => {
-          const currentId = current?.id || current?._id;
-
-          if (currentId) {
-            const matchedAlert = nextAlerts.find((alert) => alert.id === currentId || alert._id === currentId);
-            if (matchedAlert) {
-              return matchedAlert;
-            }
-          }
-
-          return nextAlerts[0] || null;
-        });
-
-        if (!nextAlerts.length) {
-          setAlertResolution((current) => (current === 'threat' ? current : 'secure'));
-        } else {
-          setAlertResolution('pending');
+        setAlerts(nextAlerts);
+        if (nextAlerts.length === 0) {
+          setShowPopup(false);
         }
       } catch (requestError) {
-        if (isMounted) {
-          setError(requestError.message);
-        }
+        setError(requestError.message);
       }
     };
 
-    syncPendingAlerts(true);
+    syncPendingAlerts();
     const intervalId = window.setInterval(() => {
-      syncPendingAlerts(false);
+      syncPendingAlerts();
     }, 15000);
 
     if (socketUrl) {
@@ -136,13 +131,10 @@ const Dashboard = () => {
           return;
         }
 
-        setPendingAlerts((current) => {
+        setAlerts((current) => {
           const nextAlerts = current.filter((alert) => alert.id !== normalizedAlert.id);
-          return [normalizedAlert, ...nextAlerts];
+          return sortAlerts([normalizedAlert, ...nextAlerts]);
         });
-        setActiveAlert(normalizedAlert);
-        setShowAlert(true);
-        setAlertResolution('pending');
       });
     }
 
@@ -177,11 +169,10 @@ const Dashboard = () => {
       latestAlertRelative: formatRelativeTime(latestAlert?.timestamp),
       deviceLabel: state.deviceOnline ? 'ONLINE' : 'OFFLINE',
       currentStateLabel: state.fireActive ? '🔥 FIRE ALERT' : state.intrusionActive ? '⚠ Intruder near restricted zone' : '🟢 Area Secure',
-      latestStatus: state.fireActive ? '🔥 Fire detected near secured area' : latestEvent?.intrusion ? '⚠ Possible theft attempt near secured area' : '🟢 Area Secure',
+      latestStatus: state.fireActive ? '🔥 Fire detected near secured area' : state.intrusionActive ? '⚠ Intrusion detected near secured area' : '🟢 Area Secure',
     };
   }, [events, devices]);
 
-  const currentPendingAlert = activeAlert || pendingAlerts[0] || null;
   const hourlyData = useMemo(() => bucketByHour(events), [events]);
   const dailyData = useMemo(() => bucketByDay(events), [events]);
   const latestFiveEvents = useMemo(() => {
@@ -189,74 +180,55 @@ const Dashboard = () => {
       .sort((left, right) => new Date(right.timestamp) - new Date(left.timestamp))
       .slice(0, 5);
   }, [events]);
-  const displayedFireActive = summary.fireActive;
-  const intrusionSignalActive = summary.intrusionActive || Boolean(currentPendingAlert);
-  const displayedIntrusionActive = alertResolution === 'threat' || (intrusionSignalActive && alertResolution !== 'secure');
-  const displayedCurrentStateLabel = displayedFireActive
-    ? '🔥 FIRE ALERT'
-    : alertResolution === 'secure'
-      ? '🟢 Area Secure'
-      : displayedIntrusionActive
-        ? alertResolution === 'threat'
-          ? '⚠ Threat confirmed'
-          : '⚠ Theft attempt detected'
-      : '🟢 Area Secure';
-  const displayedLatestStatus = displayedFireActive
-    ? '🔥 Fire detected near secured area'
-    : alertResolution === 'secure'
-      ? '🟢 Area Secure'
-      : displayedIntrusionActive
-        ? currentPendingAlert
-          ? `⚠ ${currentPendingAlert.zone || 'Main Entrance'} requires confirmation`
-          : alertResolution === 'threat'
-            ? '⚠ Threat confirmed for the last alert'
-            : `⚠ Possible theft attempt detected near ${summary.zone}`
-      : '🟢 Area Secure';
+  const liveAlert = summary.latestAlert && (isIntrusionEvent(summary.latestAlert) || isFireEvent(summary.latestAlert)) ? summary.latestAlert : null;
+  const latestAlert = activeAlert || alerts[0] || liveAlert || null;
+  const latestAlertType = String(latestAlert?.eventType || latestAlert?.type || '').toLowerCase();
+  const activeAlertType = String(activeAlert?.eventType || activeAlert?.type || '').toLowerCase();
+  const latestAlertZone = latestAlert?.zone || summary.zone;
+  const latestAlertTime = latestAlert?.timestamp || summary.latestAlertTimestamp || summary.latestTimestamp;
+  const latestAlertIsCritical = areaStatus === 'alert';
+  const latestAlertLabel = latestAlertIsCritical ? 'AREA NOT SECURE' : 'AREA SECURE';
+  const latestAlertTone = latestAlertIsCritical
+    ? 'border border-red-200 bg-red-100 text-red-700 shadow-[0_0_16px_rgba(239,68,68,0.18)]'
+    : 'border border-emerald-200 bg-emerald-100 text-emerald-700';
 
   useEffect(() => {
-    const alertId = currentPendingAlert?.id || currentPendingAlert?._id || '';
-
-    if (alertHideTimeoutRef.current) {
-      window.clearTimeout(alertHideTimeoutRef.current);
-      alertHideTimeoutRef.current = null;
-    }
-
-    if (!alertId) {
-      setShowAlert(false);
-      setDismissedAlertId('');
-      return undefined;
-    }
-
-    if (dismissedAlertId === alertId) {
-      setShowAlert(false);
-      return undefined;
-    }
-
-    if (!showAlert) {
-      setShowAlert(true);
-      return undefined;
-    }
-
-    alertHideTimeoutRef.current = window.setTimeout(() => {
-      setDismissedAlertId(alertId);
-      setShowAlert(false);
-    }, 5000);
-
-    return () => {
-      if (alertHideTimeoutRef.current) {
-        window.clearTimeout(alertHideTimeoutRef.current);
-        alertHideTimeoutRef.current = null;
-      }
-    };
-  }, [currentPendingAlert?.id, dismissedAlertId, showAlert]);
-
-  const handleResolveAlert = async (status) => {
-    if (!currentPendingAlert) {
+    if (!alerts || alerts.length === 0) {
+      setShowPopup(false);
       return;
     }
 
-    const alertId = currentPendingAlert.id || currentPendingAlert._id;
-    const nextAlerts = pendingAlerts.filter((alert) => (alert.id || alert._id) !== alertId);
+    const latest = alerts[0];
+
+    if ((latest.eventType === 'intrusion' || latest.eventType === 'fire') && latest.id !== dismissedAlertId) {
+      setActiveAlert(latest);
+      setShowPopup(true);
+      setAreaStatus('alert');
+      setShowStatusBox(true);
+    } else {
+      setActiveAlert(null);
+      setShowPopup(false);
+      setAreaStatus('secure');
+    }
+  }, [alerts, dismissedAlertId]);
+
+  useEffect(() => {
+    if (!liveAlert || dismissedAlertId === liveAlert.id) {
+      return;
+    }
+
+    setActiveAlert(liveAlert);
+    setShowPopup(true);
+    setAreaStatus('alert');
+    setShowStatusBox(true);
+  }, [liveAlert, dismissedAlertId]);
+
+  const handleResolveAlert = async (status) => {
+    if (!activeAlert) {
+      return;
+    }
+
+    const alertId = activeAlert.id || activeAlert._id;
 
     setResolvingAlertStatus(status);
 
@@ -266,11 +238,13 @@ const Dashboard = () => {
         body: JSON.stringify({ status }),
       });
 
-      setPendingAlerts(nextAlerts);
-      setActiveAlert(nextAlerts[0] || null);
-      setAlertResolution(status);
+      setAlerts((current) => current.filter((alert) => (alert.id || alert._id) !== alertId));
+      setAreaStatus(status === 'secure' ? 'secure' : 'alert');
       setDismissedAlertId(alertId);
-      setShowAlert(false);
+      if (status === 'secure') {
+        setActiveAlert(null);
+      }
+      setShowPopup(false);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -279,48 +253,122 @@ const Dashboard = () => {
   };
 
   const handleCloseAlert = () => {
-    if (currentPendingAlert) {
-      setDismissedAlertId(currentPendingAlert.id || currentPendingAlert._id || '');
+    setDismissedAlertId(activeAlert?.id || activeAlert?._id || dismissedAlertId);
+    setShowPopup(false);
+  };
+
+  const renderAlertTypeLabel = (eventType) => {
+    const normalizedType = String(eventType || '').toLowerCase();
+
+    if (normalizedType === 'fire') {
+      return 'Fire';
     }
-    setShowAlert(false);
+
+    if (normalizedType === 'intrusion') {
+      return 'Intrusion';
+    }
+
+    if (normalizedType === 'motion') {
+      return 'Motion';
+    }
+
+    return 'Alert';
   };
 
   return (
-    <main className="relative mx-auto max-w-7xl px-4 py-6 text-slate-900 sm:px-6 lg:px-8">
-      {fireAlert ? <FireAlertCard alert={fireAlert} onClose={() => setFireAlert(null)} /> : null}
-      {showAlert && currentPendingAlert ? (
-        <AlertModal
-          alert={currentPendingAlert}
-          onResolve={handleResolveAlert}
-          onClose={handleCloseAlert}
-          resolvingStatus={resolvingAlertStatus}
-        />
-      ) : null}
+    <>
+      {showPopup && activeAlert && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            width: '320px',
+            background: '#ffffff',
+            borderRadius: '12px',
+            padding: '16px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+            zIndex: 9999,
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <h3 style={{ color: 'red' }}>
+              {activeAlert.eventType === 'fire' ? '🔥 Fire Alert' : '🚨 Theft Attempt Alert'}
+            </h3>
 
-      <SecurityStatusPanel
-        intrusionActive={displayedIntrusionActive}
-        fireActive={displayedFireActive}
-        activeZone={summary.activeZone}
-        latestAlertTime={summary.latestAlertTimestamp || summary.latestTimestamp}
-        alertCount={summary.alertCount}
-        deviceId={summary.deviceId}
-      />
+            <button type="button" onClick={handleCloseAlert}>
+              ✖
+            </button>
+          </div>
+
+          <p>
+            <strong>Zone:</strong> {activeAlert.zone}
+          </p>
+
+          <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+            <button
+              type="button"
+              style={{ background: 'green', color: 'white', padding: '8px', borderRadius: '6px' }}
+              onClick={() => {
+                setAreaStatus('secure');
+                setShowPopup(false);
+                handleResolveAlert('secure');
+              }}
+            >
+              It's Me
+            </button>
+
+            <button
+              type="button"
+              style={{ background: 'red', color: 'white', padding: '8px', borderRadius: '6px' }}
+              onClick={() => {
+                setAreaStatus('alert');
+                setShowPopup(false);
+                handleResolveAlert('threat');
+              }}
+            >
+              Confirm Threat
+            </button>
+          </div>
+        </div>
+      )}
+
+      <main className="relative mx-auto max-w-7xl px-4 py-6 text-slate-900 sm:px-6 lg:px-8">
+
+      {showStatusBox && (
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowStatusBox(false)}
+            className="absolute right-3 top-3 z-10 rounded-full bg-white/90 px-3 py-1 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-white hover:text-slate-900"
+            aria-label="Close live status box"
+          >
+            ✕
+          </button>
+          <SecurityStatusPanel
+            areaStatus={areaStatus}
+            intrusionActive={areaStatus === 'alert' && activeAlertType === 'intrusion'}
+            fireActive={areaStatus === 'alert' && activeAlertType === 'fire'}
+            activeZone={latestAlertZone}
+            latestAlertTime={latestAlertTime}
+            alertCount={summary.alertCount}
+          />
+        </div>
+      )}
 
       <section className="relative overflow-hidden rounded-[32px] border border-slate-200 bg-white p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] sm:p-8">
         <div className="absolute inset-0 bg-[linear-gradient(transparent_0%,transparent_96%,rgba(15,23,42,0.03)_100%)] bg-[length:100%_14px] opacity-30" />
         <div className="relative grid gap-8 xl:grid-cols-[1.2fr_0.8fr] xl:items-center">
           <div>
             <div className="inline-flex items-center gap-3 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs uppercase tracking-[0.28em] text-slate-600">
-              <span className={`h-2.5 w-2.5 rounded-full ${displayedFireActive ? 'bg-rose-500 shadow-[0_0_16px_rgba(244,63,94,0.35)] blink-badge' : displayedIntrusionActive ? 'bg-amber-500 shadow-[0_0_16px_rgba(245,158,11,0.3)] blink-badge' : 'bg-emerald-500 shadow-[0_0_16px_rgba(16,185,129,0.25)]'}`} />
-              {displayedFireActive ? 'FIRE ACTIVE' : displayedIntrusionActive ? 'THREAT ACTIVE' : 'AREA SECURE'}
+              <span className={`h-2.5 w-2.5 rounded-full ${latestAlertIsCritical ? 'bg-rose-500 shadow-[0_0_16px_rgba(244,63,94,0.35)] blink-badge' : 'bg-emerald-500 shadow-[0_0_16px_rgba(16,185,129,0.25)]'}`} />
+              {latestAlertLabel}
             </div>
             <h2 className="mt-5 max-w-3xl text-4xl font-semibold leading-tight text-slate-900 sm:text-5xl">Smart home security dashboard for real-time monitoring.</h2>
             <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
-              {displayedFireActive
-                ? `🔥 Critical fire detected in room at ${summary.zone}. The last signal came ${summary.latestAlertRelative}.`
-                : displayedIntrusionActive
-                ? `⚠ A suspicious person is attempting to access your locked room at ${summary.zone}. The last signal came ${summary.latestEventRelative}.`
-                : `🟢 Area Secure. The system is tracking ${summary.deviceId} and the latest signal arrived ${summary.latestEventRelative}.`}
+              {latestAlertIsCritical
+                ? `${latestAlertType === 'fire' ? '🔥 Fire' : '⚠ Theft attempt'} detected near ${latestAlertZone}. The last alert arrived ${formatRelativeTime(latestAlertTime)}.`
+                : `🟢 Area secure. The latest alert is not critical, and the last signal arrived ${formatRelativeTime(latestAlertTime)}.`}
             </p>
           </div>
 
@@ -329,16 +377,16 @@ const Dashboard = () => {
             <div className="mt-4 space-y-4">
               <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
                 <p className="text-sm text-slate-500">Current alert state</p>
-                <div className={`mt-3 text-2xl font-semibold ${displayedFireActive ? 'text-rose-700' : displayedIntrusionActive ? 'text-amber-700' : 'text-emerald-700'}`}>{displayedCurrentStateLabel}</div>
+                <div className={`mt-3 inline-flex rounded-full px-4 py-2 text-2xl font-semibold ${latestAlertTone}`}>{latestAlertLabel}</div>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Zone</p>
-                  <div className="mt-2 text-lg font-semibold text-slate-900">{summary.zone}</div>
+                  <div className="mt-2 text-lg font-semibold text-slate-900">{latestAlertZone}</div>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Detected at</p>
-                  <div className="mt-2 text-lg font-semibold text-slate-900">{summary.latestTime}</div>
+                  <div className="mt-2 text-lg font-semibold text-slate-900">{formatDateTime(latestAlertTime)}</div>
                 </div>
               </div>
             </div>
@@ -350,7 +398,7 @@ const Dashboard = () => {
         <StatCard
           label="Device Status"
           value={loading ? '...' : summary.deviceLabel}
-          detail={`Latest heartbeat for ${summary.deviceId} is ${formatRelativeTime(summary.latestTimestamp)}.`}
+          detail={`Latest heartbeat is ${formatRelativeTime(summary.latestTimestamp)}.`}
           tone={summary.deviceOnline ? 'emerald' : 'slate'}
           emphasis="Heartbeat"
         />
@@ -384,20 +432,20 @@ const Dashboard = () => {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-xs uppercase tracking-[0.28em] text-slate-500">System state</p>
-                  <h3 className="mt-2 text-2xl font-semibold text-slate-900">{displayedLatestStatus}</h3>
+                  <h3 className="mt-2 text-2xl font-semibold text-slate-900">{latestAlertLabel}</h3>
                 </div>
-                <div className={`rounded-full px-4 py-2 text-xs uppercase tracking-[0.24em] ${displayedIntrusionActive ? 'blink-badge border border-amber-200 bg-amber-100 text-amber-700' : 'border border-emerald-200 bg-emerald-100 text-emerald-700'}`}>
-                  {displayedIntrusionActive ? 'THREAT ACTIVE' : 'AREA SECURE'}
+                <div className={`rounded-full px-4 py-2 text-xs uppercase tracking-[0.24em] ${latestAlertTone}`}>
+                  {latestAlertLabel}
                 </div>
               </div>
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Zone</p>
-                  <p className="mt-2 text-lg font-semibold text-slate-900">{summary.zone}</p>
+                  <p className="mt-2 text-lg font-semibold text-slate-900">{latestAlertZone}</p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Event time</p>
-                  <p className="mt-2 text-lg font-semibold text-slate-900">{summary.latestTime}</p>
+                  <p className="mt-2 text-lg font-semibold text-slate-900">{formatDateTime(latestAlertTime)}</p>
                 </div>
               </div>
             </div>
@@ -405,10 +453,6 @@ const Dashboard = () => {
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-xs uppercase tracking-[0.28em] text-slate-500">Device status</p>
               <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-slate-500">Device</span>
-                  <span className="font-semibold text-slate-900">{summary.deviceId}</span>
-                </div>
                 <div className="mt-3 flex items-center justify-between gap-3">
                   <span className="text-sm text-slate-500">Status</span>
                   <span className={`rounded-full px-3 py-1 text-xs uppercase tracking-[0.22em] ${summary.deviceOnline ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>
@@ -429,7 +473,7 @@ const Dashboard = () => {
 
         <SectionCard title="Live security event" subtitle="Popup notification card">
           <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm leading-7 text-slate-600">
-            Real-time security incidents, including fire and intrusion events, will surface as a live popup in the upper-right corner as soon as the ESP32 posts a new event.
+            Real-time security incidents, including intrusion and fire alerts, appear as a live popup in the upper-right corner as soon as the backend receives a new event.
           </div>
         </SectionCard>
       </section>
@@ -463,7 +507,9 @@ const Dashboard = () => {
           </div>
         </SectionCard>
       </section>
-    </main>
+
+      </main>
+    </>
   );
 };
 

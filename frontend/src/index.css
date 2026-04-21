@@ -74,6 +74,20 @@ body {
   animation: fadeScaleIn 180ms ease-out;
 }
 
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 180ms ease-out;
+}
+
 *::selection {
   background: rgba(59, 130, 246, 0.18);
   color: #0f172a;

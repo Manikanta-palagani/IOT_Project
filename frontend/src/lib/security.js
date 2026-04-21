@@ -57,9 +57,23 @@ const formatRelativeTime = (value) => {
   return `${days} day${days === 1 ? '' : 's'} ago`;
 };
 
-const isFireEvent = (event) => event?.eventType === 'fire';
+const normalizeEventType = (value) => {
+  const normalizedValue = String(value || '').trim().toLowerCase();
 
-const isIntrusionEvent = (event) => event?.eventType === 'intrusion' || (!event?.eventType && event?.intrusion === true);
+  if (normalizedValue === 'theft') {
+    return 'intrusion';
+  }
+
+  if (normalizedValue === 'intrusion' || normalizedValue === 'fire' || normalizedValue === 'motion') {
+    return normalizedValue;
+  }
+
+  return '';
+};
+
+const isFireEvent = (event) => normalizeEventType(event?.eventType || event?.type) === 'fire';
+
+const isIntrusionEvent = (event) => normalizeEventType(event?.eventType || event?.type) === 'intrusion' || (!event?.eventType && event?.intrusion === true) || String(event?.eventType || event?.type || '').trim().toLowerCase() === 'theft';
 
 const isAlertEvent = (event) => isFireEvent(event) || isIntrusionEvent(event);
 
@@ -159,7 +173,7 @@ const deriveSecurityState = (events, devices) => {
     fireActive,
     deviceOnline,
     zone: latestEvent?.zone || latestDevice?.zone || 'Main Entrance',
-    deviceId: latestEvent?.deviceId || latestDevice?.deviceId || 'esp32-01',
+    deviceId: latestEvent?.deviceId || latestDevice?.deviceId || 'Connected device',
   };
 };
 
