@@ -17,12 +17,15 @@ const Dashboard = () => {
   const [devices, setDevices] = useState([]);
   const [pendingAlerts, setPendingAlerts] = useState([]);
   const [activeAlert, setActiveAlert] = useState(null);
+  const [showAlert, setShowAlert] = useState(false);
+  const [dismissedAlertId, setDismissedAlertId] = useState('');
   const [alertResolution, setAlertResolution] = useState('secure');
   const [resolvingAlertStatus, setResolvingAlertStatus] = useState('');
   const [fireAlert, setFireAlert] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const socketRef = useRef(null);
+  const alertHideTimeoutRef = useRef(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -138,6 +141,7 @@ const Dashboard = () => {
           return [normalizedAlert, ...nextAlerts];
         });
         setActiveAlert(normalizedAlert);
+        setShowAlert(true);
         setAlertResolution('pending');
       });
     }
@@ -180,22 +184,71 @@ const Dashboard = () => {
   const currentPendingAlert = activeAlert || pendingAlerts[0] || null;
   const hourlyData = useMemo(() => bucketByHour(events), [events]);
   const dailyData = useMemo(() => bucketByDay(events), [events]);
+  const latestFiveEvents = useMemo(() => {
+    return [...events]
+      .sort((left, right) => new Date(right.timestamp) - new Date(left.timestamp))
+      .slice(0, 5);
+  }, [events]);
   const displayedFireActive = summary.fireActive;
-  const displayedIntrusionActive = Boolean(currentPendingAlert) || alertResolution === 'threat';
+  const intrusionSignalActive = summary.intrusionActive || Boolean(currentPendingAlert);
+  const displayedIntrusionActive = alertResolution === 'threat' || (intrusionSignalActive && alertResolution !== 'secure');
   const displayedCurrentStateLabel = displayedFireActive
     ? '🔥 FIRE ALERT'
-    : displayedIntrusionActive
-      ? alertResolution === 'threat'
-        ? '⚠ Threat confirmed'
-        : '⚠ Pending alert'
+    : alertResolution === 'secure'
+      ? '🟢 Area Secure'
+      : displayedIntrusionActive
+        ? alertResolution === 'threat'
+          ? '⚠ Threat confirmed'
+          : '⚠ Theft attempt detected'
       : '🟢 Area Secure';
   const displayedLatestStatus = displayedFireActive
     ? '🔥 Fire detected near secured area'
-    : displayedIntrusionActive
-      ? currentPendingAlert
-        ? `⚠ ${currentPendingAlert.zone || 'Main Entrance'} requires confirmation`
-        : '⚠ Threat confirmed for the last alert'
+    : alertResolution === 'secure'
+      ? '🟢 Area Secure'
+      : displayedIntrusionActive
+        ? currentPendingAlert
+          ? `⚠ ${currentPendingAlert.zone || 'Main Entrance'} requires confirmation`
+          : alertResolution === 'threat'
+            ? '⚠ Threat confirmed for the last alert'
+            : `⚠ Possible theft attempt detected near ${summary.zone}`
       : '🟢 Area Secure';
+
+  useEffect(() => {
+    const alertId = currentPendingAlert?.id || currentPendingAlert?._id || '';
+
+    if (alertHideTimeoutRef.current) {
+      window.clearTimeout(alertHideTimeoutRef.current);
+      alertHideTimeoutRef.current = null;
+    }
+
+    if (!alertId) {
+      setShowAlert(false);
+      setDismissedAlertId('');
+      return undefined;
+    }
+
+    if (dismissedAlertId === alertId) {
+      setShowAlert(false);
+      return undefined;
+    }
+
+    if (!showAlert) {
+      setShowAlert(true);
+      return undefined;
+    }
+
+    alertHideTimeoutRef.current = window.setTimeout(() => {
+      setDismissedAlertId(alertId);
+      setShowAlert(false);
+    }, 5000);
+
+    return () => {
+      if (alertHideTimeoutRef.current) {
+        window.clearTimeout(alertHideTimeoutRef.current);
+        alertHideTimeoutRef.current = null;
+      }
+    };
+  }, [currentPendingAlert?.id, dismissedAlertId, showAlert]);
 
   const handleResolveAlert = async (status) => {
     if (!currentPendingAlert) {
@@ -216,6 +269,8 @@ const Dashboard = () => {
       setPendingAlerts(nextAlerts);
       setActiveAlert(nextAlerts[0] || null);
       setAlertResolution(status);
+      setDismissedAlertId(alertId);
+      setShowAlert(false);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -223,13 +278,21 @@ const Dashboard = () => {
     }
   };
 
+  const handleCloseAlert = () => {
+    if (currentPendingAlert) {
+      setDismissedAlertId(currentPendingAlert.id || currentPendingAlert._id || '');
+    }
+    setShowAlert(false);
+  };
+
   return (
     <main className="relative mx-auto max-w-7xl px-4 py-6 text-slate-900 sm:px-6 lg:px-8">
       {fireAlert ? <FireAlertCard alert={fireAlert} onClose={() => setFireAlert(null)} /> : null}
-      {currentPendingAlert ? (
+      {showAlert && currentPendingAlert ? (
         <AlertModal
           alert={currentPendingAlert}
           onResolve={handleResolveAlert}
+          onClose={handleCloseAlert}
           resolvingStatus={resolvingAlertStatus}
         />
       ) : null}
@@ -382,7 +445,7 @@ const Dashboard = () => {
 
       <section className="mt-6 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
         <SectionCard title="Event history timeline" subtitle="Security event history cards">
-          <EventTimeline events={events.slice(0, 8)} />
+          <EventTimeline events={latestFiveEvents} />
         </SectionCard>
 
         <SectionCard title="Device heartbeat" subtitle="Online/offline state">

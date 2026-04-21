@@ -85,8 +85,8 @@ const createAlert = async (req, res, next) => {
 
     return res.status(201).json({
       message: resolvedType === 'fire'
-        ? 'Fire alert stored successfully'
-        : 'Possible theft attempt near secured area stored successfully',
+        ? 'Fire detected in your home stored successfully'
+        : 'Possible theft attempt detected near secured area stored successfully',
       alert: alertPayload,
     });
   } catch (error) {

@@ -32,10 +32,10 @@ const resolveEventType = ({ eventType, intrusion }) => {
 
 const buildStatusMessage = ({ eventType, intrusion }) => {
   if (eventType === 'fire') {
-    return 'Fire detected near secured area';
+    return 'Fire detected in your home';
   }
 
-  return intrusion ? 'Possible theft attempt near secured area' : 'Heartbeat received';
+  return intrusion ? 'Possible theft attempt detected near secured area' : 'Heartbeat received';
 };
 
 const getRecipients = async () => {
@@ -141,9 +141,9 @@ const createAlert = async (req, res, next) => {
 
     return res.status(201).json({
       message: isFireEvent
-        ? 'Fire detected near secured area stored successfully'
+        ? 'Fire detected in your home stored successfully'
         : isIntrusionEvent
-          ? 'Possible theft attempt near secured area stored successfully'
+          ? 'Possible theft attempt detected near secured area stored successfully'
           : 'Heartbeat stored successfully',
       event: eventPayload,
       device,
