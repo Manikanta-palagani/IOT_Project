@@ -6,10 +6,10 @@ const formatTime = (timestamp) => {
 
 const AlertsTable = ({ alerts, onDeleteAlert, deletingAlertId }) => {
   return (
-    <div className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-white/10 text-left text-sm">
-          <thead className="bg-white/5 text-white/70">
+        <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+          <thead className="bg-slate-50 text-slate-600">
             <tr>
               <th className="px-5 py-3 font-medium">Timestamp</th>
               <th className="px-5 py-3 font-medium">Device ID</th>
@@ -17,10 +17,10 @@ const AlertsTable = ({ alerts, onDeleteAlert, deletingAlertId }) => {
               <th className="px-5 py-3 font-medium">Action</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/10">
+          <tbody className="divide-y divide-slate-200">
             {alerts.length === 0 ? (
               <tr>
-                <td className="px-5 py-8 text-white/60" colSpan="4">
+                <td className="px-5 py-8 text-slate-500" colSpan="4">
                   No alerts received yet.
                 </td>
               </tr>
@@ -30,17 +30,17 @@ const AlertsTable = ({ alerts, onDeleteAlert, deletingAlertId }) => {
                 const fireAlert = isFireEvent(alert);
                 const intrusionAlert = isIntrusionEvent(alert);
                 const statusLabel = fireAlert ? '🔥 FIRE ALERT' : intrusionAlert ? 'Suspicious' : 'Clear';
-                const statusTone = fireAlert ? 'bg-red-500/20 text-red-100 border-red-400/30' : intrusionAlert ? 'bg-red-500/15 text-red-200' : 'bg-emerald-500/15 text-emerald-200';
+                const statusTone = fireAlert ? 'bg-rose-100 text-rose-700 border-rose-200' : intrusionAlert ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200';
 
                 return (
-                  <tr key={alertId} className="hover:bg-white/5">
-                    <td className="px-5 py-4 text-white/80">{formatTime(alert.timestamp)}</td>
-                    <td className="px-5 py-4 text-white">{alert.deviceId}</td>
+                  <tr key={alertId} className="hover:bg-slate-50">
+                    <td className="px-5 py-4 text-slate-600">{formatTime(alert.timestamp)}</td>
+                    <td className="px-5 py-4 text-slate-900">{alert.deviceId}</td>
                     <td className="px-5 py-4">
-                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone}`}>
+                      <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusTone}`}>
                         {statusLabel}
                       </span>
-                      <p className="mt-2 text-xs text-white/55">
+                      <p className="mt-2 text-xs text-slate-500">
                         {fireAlert
                           ? alert.statusMessage || 'Fire detected near secured area'
                           : alert.statusMessage || (intrusionAlert ? 'Possible theft attempt near secured area' : 'Clear')}
@@ -51,7 +51,7 @@ const AlertsTable = ({ alerts, onDeleteAlert, deletingAlertId }) => {
                         type="button"
                         onClick={() => onDeleteAlert?.(alertId)}
                         disabled={!onDeleteAlert || deletingAlertId === alertId}
-                        className="rounded-full border border-red-400/20 bg-red-500/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs uppercase tracking-[0.18em] text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {deletingAlertId === alertId ? 'Deleting...' : 'Delete'}
                       </button>

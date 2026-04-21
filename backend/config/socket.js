@@ -11,6 +11,12 @@ const emitSecurityEvent = (event) => {
   }
 };
 
+const emitNewAlert = (alert) => {
+  if (ioInstance) {
+    ioInstance.emit('new-alert', alert);
+  }
+};
+
 const emitDashboardSnapshot = (snapshot) => {
   if (ioInstance) {
     ioInstance.emit('security:snapshot', snapshot);
@@ -31,6 +37,7 @@ const emitSecurityEventsCleared = (payload) => {
 
 module.exports = {
   initSocket,
+  emitNewAlert,
   emitSecurityEvent,
   emitDashboardSnapshot,
   emitSecurityEventDeleted,

@@ -30,21 +30,21 @@ const EventTimeline = ({ events }) => {
   return (
     <div className="space-y-3">
       {events.length === 0 ? (
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/55">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
           No security events recorded yet.
         </div>
       ) : (
         events.map((event) => (
-          <article key={event.id} className="rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:border-white/20 hover:bg-white/7">
+          <article key={event.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-slate-300 hover:bg-white">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <div className={`inline-flex rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.24em] ${isFireEvent(event) ? 'border border-red-300/40 bg-red-500/20 text-red-50' : isIntrusionEvent(event) ? 'border border-red-400/30 bg-red-500/15 text-red-100' : 'border border-emerald-400/30 bg-emerald-500/15 text-emerald-100'}`}>
+                <div className={`inline-flex rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.24em] ${isFireEvent(event) ? 'border border-rose-200 bg-rose-100 text-rose-700' : isIntrusionEvent(event) ? 'border border-amber-200 bg-amber-100 text-amber-700' : 'border border-emerald-200 bg-emerald-100 text-emerald-700'}`}>
                   {isFireEvent(event) ? '🔥 FIRE ALERT' : isIntrusionEvent(event) ? 'Suspicious Activity' : 'Heartbeat'}
                 </div>
-                <h3 className={`mt-3 text-base font-semibold ${isFireEvent(event) ? 'text-red-50' : 'text-white'}`}>{isFireEvent(event) ? `🔥 ${getEventLabel(event)}` : isIntrusionEvent(event) ? `⚠ ${getEventLabel(event)}` : '🟢 Area Secure'}</h3>
-                <p className="mt-1 text-sm text-white/65">Zone: {event.zone} · Device: {event.deviceId}</p>
+                <h3 className={`mt-3 text-base font-semibold ${isFireEvent(event) ? 'text-rose-700' : 'text-slate-900'}`}>{isFireEvent(event) ? `🔥 ${getEventLabel(event)}` : isIntrusionEvent(event) ? `⚠ ${getEventLabel(event)}` : '🟢 Area Secure'}</h3>
+                <p className="mt-1 text-sm text-slate-600">Zone: {event.zone} · Device: {event.deviceId}</p>
               </div>
-              <p className="text-sm text-white/50">{formatDateTime(event.timestamp, event.displayTimestamp)}</p>
+              <p className="text-sm text-slate-500">{formatDateTime(event.timestamp, event.displayTimestamp)}</p>
             </div>
           </article>
         ))

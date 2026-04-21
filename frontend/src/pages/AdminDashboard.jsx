@@ -151,11 +151,11 @@ const AdminDashboard = () => {
   };
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-      <section className="rounded-[32px] border border-white/10 bg-slate-950/80 p-6 shadow-[0_30px_120px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:p-8">
-        <p className="text-xs uppercase tracking-[0.34em] text-amber-200/70">Admin console</p>
-        <h2 className="mt-3 text-4xl font-semibold text-white">Security administration dashboard</h2>
-        <p className="mt-4 max-w-3xl text-base leading-7 text-white/60">
+    <main className="mx-auto max-w-7xl px-4 py-6 text-slate-900 sm:px-6 lg:px-8">
+      <section className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] sm:p-8">
+        <p className="text-xs uppercase tracking-[0.34em] text-blue-600">Admin console</p>
+        <h2 className="mt-3 text-4xl font-semibold text-slate-900">Security administration dashboard</h2>
+        <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">
           Manage registered users, toggle broadcast settings, review suspicious security events, and maintain operational oversight as {user?.email}.
         </p>
       </section>
@@ -171,38 +171,38 @@ const AdminDashboard = () => {
         <SectionCard title="Add user" subtitle="Direct email provisioning">
           <form className="space-y-4" onSubmit={handleSubmit}>
             <label className="block">
-              <span className="text-sm text-white/60">Email address</span>
+              <span className="text-sm text-slate-600">Email address</span>
               <input
                 value={form.email}
                 onChange={(event) => setForm({ email: event.target.value })}
                 type="email"
                 required
-                className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition placeholder:text-white/25 focus:border-amber-400/40 focus:bg-white/8"
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-slate-50"
                 placeholder="new.user@example.com"
               />
             </label>
             <button
               type="submit"
-              className="w-full rounded-2xl bg-gradient-to-r from-amber-400 to-red-500 px-4 py-3 font-semibold text-slate-950 transition hover:brightness-110"
+              className="w-full rounded-2xl bg-gradient-to-r from-blue-600 to-emerald-500 px-4 py-3 font-semibold text-white shadow-[0_14px_30px_rgba(59,130,246,0.18)] transition hover:brightness-105"
             >
               Add user
             </button>
           </form>
 
           {temporaryPassword ? (
-            <div className="mt-4 rounded-3xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-emerald-100">
+            <div className="mt-4 rounded-3xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
               Temporary password: <span className="font-semibold">{temporaryPassword}</span>
             </div>
           ) : null}
 
-          {error ? <div className="mt-4 rounded-3xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">{error}</div> : null}
+          {error ? <div className="mt-4 rounded-3xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div> : null}
         </SectionCard>
 
         <SectionCard title="Registered users" subtitle="View, disable, delete, and manage mail broadcasts">
-          <div className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
             <div className="max-h-[520px] overflow-auto">
               <table className="min-w-full text-left text-sm">
-                <thead className="sticky top-0 bg-slate-950/95 text-white/55">
+                <thead className="sticky top-0 bg-slate-50 text-slate-500">
                   <tr>
                     <th className="px-4 py-3 font-medium">Email</th>
                     <th className="px-4 py-3 font-medium">Role</th>
@@ -211,20 +211,20 @@ const AdminDashboard = () => {
                     <th className="px-4 py-3 font-medium">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/10">
+                <tbody className="divide-y divide-slate-200">
                   {users.length === 0 ? (
                     <tr>
-                      <td className="px-4 py-8 text-white/55" colSpan="5">
+                      <td className="px-4 py-8 text-slate-500" colSpan="5">
                         No users found.
                       </td>
                     </tr>
                   ) : (
                     users.map((account) => (
-                      <tr key={account.id} className="hover:bg-white/5">
-                        <td className="px-4 py-3 text-white">{account.email}</td>
-                        <td className="px-4 py-3 text-white/70">{account.role}</td>
+                      <tr key={account.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-3 text-slate-900">{account.email}</td>
+                        <td className="px-4 py-3 text-slate-600">{account.role}</td>
                         <td className="px-4 py-3">
-                          <span className={`rounded-full px-3 py-1 text-xs uppercase tracking-[0.22em] ${account.isActive ? 'bg-emerald-500/15 text-emerald-100' : 'bg-slate-500/15 text-slate-100'}`}>
+                          <span className={`rounded-full px-3 py-1 text-xs uppercase tracking-[0.22em] ${account.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>
                             {account.isActive ? 'Active' : 'Disabled'}
                           </span>
                         </td>
@@ -232,7 +232,7 @@ const AdminDashboard = () => {
                           <button
                             type="button"
                             onClick={() => handleToggleBroadcast(account.id, account.broadcastEnabled)}
-                            className={`rounded-full px-3 py-1 text-xs uppercase tracking-[0.22em] transition ${account.broadcastEnabled ? 'bg-cyan-500/15 text-cyan-100 hover:bg-cyan-500/25' : 'bg-slate-500/15 text-slate-100 hover:bg-slate-500/25'}`}
+                            className={`rounded-full px-3 py-1 text-xs uppercase tracking-[0.22em] transition ${account.broadcastEnabled ? 'bg-sky-100 text-sky-700 hover:bg-sky-200' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
                           >
                             {account.broadcastEnabled ? 'Enabled' : 'Muted'}
                           </button>
@@ -242,14 +242,14 @@ const AdminDashboard = () => {
                             <button
                               type="button"
                               onClick={() => handleDisable(account.id)}
-                              className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/10 hover:text-white"
+                              className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs uppercase tracking-[0.18em] text-slate-700 transition hover:bg-slate-50 hover:text-slate-900"
                             >
                               Disable
                             </button>
                             <button
                               type="button"
                               onClick={() => handleDelete(account.id)}
-                              className="rounded-full border border-red-400/20 bg-red-500/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-red-100 transition hover:bg-red-500/20"
+                              className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs uppercase tracking-[0.18em] text-rose-700 transition hover:bg-rose-100"
                             >
                               Delete
                             </button>
@@ -274,7 +274,7 @@ const AdminDashboard = () => {
               type="button"
               onClick={handleDeleteAllEvents}
               disabled={clearingEvents || securityEvents.length === 0}
-              className="rounded-full border border-red-400/20 bg-red-500/10 px-4 py-2 text-xs uppercase tracking-[0.22em] text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-xs uppercase tracking-[0.22em] text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {clearingEvents ? 'Deleting all...' : 'Delete all alerts'}
             </button>
@@ -284,17 +284,17 @@ const AdminDashboard = () => {
         </SectionCard>
 
         <SectionCard title="Mail broadcast settings" subtitle="Operational alert delivery">
-          <div className="space-y-4 text-sm leading-7 text-white/65">
+          <div className="space-y-4 text-sm leading-7 text-slate-600">
             <p>
               Active users with broadcast enabled receive intrusion and fire alerts, and the seeded admin mailbox is always included.
             </p>
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-              <p className="text-white/55">Total active recipients</p>
-              <p className="mt-2 text-3xl font-semibold text-white">{stats.activeUsers + 1}</p>
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-slate-500">Total active recipients</p>
+              <p className="mt-2 text-3xl font-semibold text-slate-900">{stats.activeUsers + 1}</p>
             </div>
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-              <p className="text-white/55">Broadcast policy</p>
-              <p className="mt-2 text-white">All intrusion and fire security events generate Gmail notifications via Nodemailer using environment variables only.</p>
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-slate-500">Broadcast policy</p>
+              <p className="mt-2 text-slate-700">All intrusion and fire security events generate Gmail notifications via Nodemailer using environment variables only.</p>
             </div>
           </div>
         </SectionCard>

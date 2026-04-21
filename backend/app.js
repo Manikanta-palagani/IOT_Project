@@ -5,7 +5,7 @@ const morgan = require('morgan');
 const authRoutes = require('./routes/authRoutes');
 const securityRoutes = require('./routes/securityRoutes');
 const userRoutes = require('./routes/userRoutes');
-const { createAlert, getEvents } = require('./controllers/securityController');
+const alertRoutes = require('./routes/alertRoutes');
 
 const app = express();
 
@@ -31,8 +31,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/security', securityRoutes);
 app.use('/api/users', userRoutes);
-app.post('/api/alerts', createAlert);
-app.get('/api/alerts', getEvents);
+app.use('/api', alertRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });

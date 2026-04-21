@@ -11,7 +11,7 @@ const char* ssid = "Mani";
 const char* password = "Mani123456";
 
 // -------------------- Backend API --------------------
-const char* serverUrl = "http://172.22.231.65:5000/api/security/alert";
+const char* serverUrl = "http://172.22.231.65:5000/api/alerts";
 
 // To avoid sending alerts repeatedly
 bool lastMotionState = LOW;
@@ -42,30 +42,31 @@ void setup() {
   Serial.println("Security System Ready...");
 }
 
-// -------------------- Send Intrusion Alert --------------------
 void sendAlert() {
-  if (WiFi.status() == WL_CONNECTED) {
-    HTTPClient http;
-
-    http.begin(serverUrl);
-    http.addHeader("Content-Type", "application/json");
-
-    String jsonData =
-      "{\"deviceId\":\"esp32-01\","
-      "\"intrusion\":true,"
-      "\"zone\":\"Main Entrance\","
-      "\"timestamp\":\"2026-04-06T12:00:00Z\"}";
-
-    int responseCode = http.POST(jsonData);
-
-    Serial.print("Server Response Code: ");
-    Serial.println(responseCode);
-
-    String response = http.getString();
-    Serial.println(response);
-
-    http.end();
+  if (WiFi.status() != WL_CONNECTED) {
+    return;
   }
+
+  HTTPClient http;
+  http.begin(serverUrl);
+  http.addHeader("Content-Type", "application/json");
+
+  String jsonData =
+    "{\"deviceId\":\"esp32-01\"," 
+    "\"motion\":true,"
+    "\"type\":\"intrusion\","
+    "\"zone\":\"Main Entrance\","
+    "\"timestamp\":\"2026-04-06T12:00:00Z\"}";
+
+  int responseCode = http.POST(jsonData);
+
+  Serial.print("Server Response Code: ");
+  Serial.println(responseCode);
+
+  String response = http.getString();
+  Serial.println(response);
+
+  http.end();
 }
 
 void loop() {
@@ -90,7 +91,3 @@ void loop() {
 
   lastMotionState = motion;
 }
-
-this is my old code 
-i i clearly mae connections as u said above
-now give me the updated code

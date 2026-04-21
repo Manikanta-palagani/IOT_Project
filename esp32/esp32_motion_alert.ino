@@ -4,7 +4,7 @@
 
 const char* ssid = "YOUR_WIFI_SSID";
 const char* password = "YOUR_WIFI_PASSWORD";
-const char* serverUrl = "http://172.22.231.65:5000/api/security/alert";
+const char* serverUrl = "http://172.22.231.65:5000/api/alerts";
 
 const int PIR_PIN = 13;
 const int FLAME_PIN = 27;
@@ -55,7 +55,7 @@ void sendAlert(const char* eventType, const char* zoneName) {
   }
 
   String healthUrl = String(serverUrl);
-  int apiPathIndex = healthUrl.indexOf("/api/security/alert");
+  int apiPathIndex = healthUrl.indexOf("/api/alerts");
   if (apiPathIndex > 0) {
     healthUrl = healthUrl.substring(0, apiPathIndex) + "/api/health";
   }
@@ -68,7 +68,7 @@ void sendAlert(const char* eventType, const char* zoneName) {
   int healthCode = healthClient.GET();
   if (healthCode < 0) {
     healthClient.end();
-    return;make
+    return;
   }
 
   healthClient.end();
