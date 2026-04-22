@@ -17,12 +17,37 @@ const Dashboard = () => {
   const [activeAlert, setActiveAlert] = useState(null);
   const [showPopup, setShowPopup] = useState(false);
   const [showStatusBox, setShowStatusBox] = useState(true);
-  const [dismissedAlertId, setDismissedAlertId] = useState('');
+  const [handledAlerts, setHandledAlerts] = useState(() => {
+    if (typeof window === 'undefined') {
+      return [];
+    }
+
+    try {
+      const storedHandledAlerts = window.localStorage.getItem('handledAlerts');
+      const parsedHandledAlerts = storedHandledAlerts ? JSON.parse(storedHandledAlerts) : [];
+      return Array.isArray(parsedHandledAlerts) ? parsedHandledAlerts.map((id) => String(id)) : [];
+    } catch (error) {
+      return [];
+    }
+  });
   const [areaStatus, setAreaStatus] = useState('secure');
   const [resolvingAlertStatus, setResolvingAlertStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const socketRef = useRef(null);
+  const handledAlertsRef = useRef(handledAlerts);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('handledAlerts', JSON.stringify(handledAlerts));
+    } catch (error) {
+      // Ignore storage failures and keep the current session state working.
+    }
+  }, [handledAlerts]);
+
+  useEffect(() => {
+    handledAlertsRef.current = handledAlerts;
+  }, [handledAlerts]);
 
   useEffect(() => {
     let isMounted = true;
@@ -86,6 +111,15 @@ const Dashboard = () => {
     };
 
     const sortAlerts = (nextAlerts) => [...nextAlerts].sort((left, right) => new Date(right.timestamp) - new Date(left.timestamp));
+    const isRecentAlert = (alert) => {
+      const alertTime = new Date(alert?.createdAt || alert?.timestamp || alert?.updatedAt || 0).getTime();
+      if (Number.isNaN(alertTime) || alertTime === 0) {
+        return true;
+      }
+
+      return Date.now() - alertTime <= 20000;
+    };
+    const isPopupAlert = (alert) => (alert?.eventType === 'intrusion' || alert?.eventType === 'fire') && !handledAlertsRef.current.includes(alert.id) && isRecentAlert(alert);
 
     const syncPendingAlerts = async () => {
       try {
@@ -96,9 +130,21 @@ const Dashboard = () => {
           : [];
 
         setAlerts(nextAlerts);
-        if (nextAlerts.length === 0) {
+
+        const latestUnhandledAlert = nextAlerts.find(isPopupAlert) || null;
+
+        if (!latestUnhandledAlert) {
           setShowPopup(false);
+          if (!nextAlerts.some((alert) => alert.eventType === 'intrusion' || alert.eventType === 'fire')) {
+            setAreaStatus('secure');
+          }
+          return;
         }
+
+        setActiveAlert(latestUnhandledAlert);
+        setShowPopup(true);
+        setAreaStatus('alert');
+        setShowStatusBox(true);
       } catch (requestError) {
         setError(requestError.message);
       }
@@ -135,6 +181,13 @@ const Dashboard = () => {
           const nextAlerts = current.filter((alert) => alert.id !== normalizedAlert.id);
           return sortAlerts([normalizedAlert, ...nextAlerts]);
         });
+
+        if ((normalizedAlert.eventType === 'intrusion' || normalizedAlert.eventType === 'fire') && !handledAlertsRef.current.includes(normalizedAlert.id)) {
+          setActiveAlert(normalizedAlert);
+          setShowPopup(true);
+          setAreaStatus('alert');
+          setShowStatusBox(true);
+        }
       });
     }
 
@@ -180,8 +233,7 @@ const Dashboard = () => {
       .sort((left, right) => new Date(right.timestamp) - new Date(left.timestamp))
       .slice(0, 5);
   }, [events]);
-  const liveAlert = summary.latestAlert && (isIntrusionEvent(summary.latestAlert) || isFireEvent(summary.latestAlert)) ? summary.latestAlert : null;
-  const latestAlert = activeAlert || alerts[0] || liveAlert || null;
+  const latestAlert = activeAlert || alerts[0] || (summary.latestAlert && (isIntrusionEvent(summary.latestAlert) || isFireEvent(summary.latestAlert)) ? summary.latestAlert : null) || null;
   const latestAlertType = String(latestAlert?.eventType || latestAlert?.type || '').toLowerCase();
   const activeAlertType = String(activeAlert?.eventType || activeAlert?.type || '').toLowerCase();
   const latestAlertZone = latestAlert?.zone || summary.zone;
@@ -198,30 +250,18 @@ const Dashboard = () => {
       return;
     }
 
-    const latest = alerts[0];
+    const latestUnhandledAlert = alerts.find((alert) => (alert.eventType === 'intrusion' || alert.eventType === 'fire') && !handledAlerts.includes(alert.id) && new Date(alert.createdAt || alert.timestamp || alert.updatedAt || 0).getTime() >= Date.now() - 20000) || null;
 
-    if ((latest.eventType === 'intrusion' || latest.eventType === 'fire') && latest.id !== dismissedAlertId) {
-      setActiveAlert(latest);
+    if (latestUnhandledAlert) {
+      setActiveAlert(latestUnhandledAlert);
       setShowPopup(true);
       setAreaStatus('alert');
       setShowStatusBox(true);
-    } else {
-      setActiveAlert(null);
-      setShowPopup(false);
-      setAreaStatus('secure');
-    }
-  }, [alerts, dismissedAlertId]);
-
-  useEffect(() => {
-    if (!liveAlert || dismissedAlertId === liveAlert.id) {
       return;
     }
 
-    setActiveAlert(liveAlert);
-    setShowPopup(true);
-    setAreaStatus('alert');
-    setShowStatusBox(true);
-  }, [liveAlert, dismissedAlertId]);
+    setShowPopup(false);
+  }, [alerts, handledAlerts]);
 
   const handleResolveAlert = async (status) => {
     if (!activeAlert) {
@@ -238,9 +278,9 @@ const Dashboard = () => {
         body: JSON.stringify({ status }),
       });
 
+      setHandledAlerts((current) => (current.includes(alertId) ? current : [...current, alertId]));
       setAlerts((current) => current.filter((alert) => (alert.id || alert._id) !== alertId));
       setAreaStatus(status === 'secure' ? 'secure' : 'alert');
-      setDismissedAlertId(alertId);
       if (status === 'secure') {
         setActiveAlert(null);
       }
@@ -253,7 +293,6 @@ const Dashboard = () => {
   };
 
   const handleCloseAlert = () => {
-    setDismissedAlertId(activeAlert?.id || activeAlert?._id || dismissedAlertId);
     setShowPopup(false);
   };
 
