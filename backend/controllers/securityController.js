@@ -157,11 +157,21 @@ const createAlert = async (req, res, next) => {
 const getEvents = async (req, res, next) => {
   try {
     const limit = Number(req.query.limit || 200);
-    const events = await SecurityEvent.find().sort({ timestamp: -1 }).limit(limit).lean();
+    const [events, intrusionLogs, fireLogs, securityLogs] = await Promise.all([
+      SecurityEvent.find().sort({ timestamp: -1 }).limit(limit).lean(),
+      SecurityEvent.countDocuments({ intrusion: true }),
+      SecurityEvent.countDocuments({ eventType: 'fire' }),
+      SecurityEvent.countDocuments({ $or: [{ intrusion: true }, { eventType: 'fire' }] }),
+    ]);
     const devices = await Device.find().sort({ updatedAt: -1 }).lean();
 
     return res.status(200).json({
       count: events.length,
+      stats: {
+        intrusionLogs,
+        fireLogs,
+        securityLogs,
+      },
       events: events.map((event) => ({
         id: event._id.toString(),
         deviceId: event.deviceId,

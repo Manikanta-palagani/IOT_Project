@@ -37,6 +37,29 @@ const Dashboard = () => {
   const socketRef = useRef(null);
   const handledAlertsRef = useRef(handledAlerts);
 
+  const normalizePopupEvent = (event) => {
+    if (!event) {
+      return null;
+    }
+
+    const id = String(event.id || event._id || '');
+    if (!id) {
+      return null;
+    }
+
+    const eventType = String(event.eventType || event.type || '').toLowerCase();
+    const normalizedEventType = eventType === 'theft' ? 'intrusion' : eventType;
+
+    return {
+      ...event,
+      id,
+      _id: id,
+      eventType: normalizedEventType,
+      type: normalizedEventType || event.type || '',
+      status: String(event.status || 'pending').toLowerCase(),
+    };
+  };
+
   useEffect(() => {
     try {
       window.localStorage.setItem('handledAlerts', JSON.stringify(handledAlerts));
@@ -111,15 +134,7 @@ const Dashboard = () => {
     };
 
     const sortAlerts = (nextAlerts) => [...nextAlerts].sort((left, right) => new Date(right.timestamp) - new Date(left.timestamp));
-    const isRecentAlert = (alert) => {
-      const alertTime = new Date(alert?.createdAt || alert?.timestamp || alert?.updatedAt || 0).getTime();
-      if (Number.isNaN(alertTime) || alertTime === 0) {
-        return true;
-      }
-
-      return Date.now() - alertTime <= 20000;
-    };
-    const isPopupAlert = (alert) => (alert?.eventType === 'intrusion' || alert?.eventType === 'fire') && !handledAlertsRef.current.includes(alert.id) && isRecentAlert(alert);
+    const isPopupAlert = (alert) => (alert?.eventType === 'intrusion' || alert?.eventType === 'fire') && !handledAlertsRef.current.includes(alert.id);
 
     const syncPendingAlerts = async () => {
       try {
@@ -245,23 +260,30 @@ const Dashboard = () => {
     : 'border border-emerald-200 bg-emerald-100 text-emerald-700';
 
   useEffect(() => {
-    if (!alerts || alerts.length === 0) {
+    const latestEvent = normalizePopupEvent(summary.latestAlert || events[0]);
+
+    if (!latestEvent) {
       setShowPopup(false);
       return;
     }
 
-    const latestUnhandledAlert = alerts.find((alert) => (alert.eventType === 'intrusion' || alert.eventType === 'fire') && !handledAlerts.includes(alert.id) && new Date(alert.createdAt || alert.timestamp || alert.updatedAt || 0).getTime() >= Date.now() - 20000) || null;
+    const isCriticalEvent = latestEvent.eventType === 'intrusion' || latestEvent.eventType === 'fire';
 
-    if (latestUnhandledAlert) {
-      setActiveAlert(latestUnhandledAlert);
-      setShowPopup(true);
-      setAreaStatus('alert');
-      setShowStatusBox(true);
+    if (!isCriticalEvent) {
+      setShowPopup(false);
       return;
     }
 
-    setShowPopup(false);
-  }, [alerts, handledAlerts]);
+    if (handledAlertsRef.current.includes(latestEvent.id)) {
+      setShowPopup(false);
+      return;
+    }
+
+    setActiveAlert(latestEvent);
+    setShowPopup(true);
+    setAreaStatus('alert');
+    setShowStatusBox(true);
+  }, [events, summary.latestAlert, handledAlerts]);
 
   const handleResolveAlert = async (status) => {
     if (!activeAlert) {
@@ -281,9 +303,7 @@ const Dashboard = () => {
       setHandledAlerts((current) => (current.includes(alertId) ? current : [...current, alertId]));
       setAlerts((current) => current.filter((alert) => (alert.id || alert._id) !== alertId));
       setAreaStatus(status === 'secure' ? 'secure' : 'alert');
-      if (status === 'secure') {
-        setActiveAlert(null);
-      }
+      setActiveAlert(null);
       setShowPopup(false);
     } catch (requestError) {
       setError(requestError.message);

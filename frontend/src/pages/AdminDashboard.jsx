@@ -10,6 +10,7 @@ const AdminDashboard = () => {
   const { user } = useAuth();
   const [users, setUsers] = useState([]);
   const [events, setEvents] = useState([]);
+  const [eventStats, setEventStats] = useState({ intrusionLogs: 0, fireLogs: 0, securityLogs: 0 });
   const [form, setForm] = useState({ email: '' });
   const [temporaryPassword, setTemporaryPassword] = useState('');
   const [loading, setLoading] = useState(true);
@@ -37,6 +38,11 @@ const AdminDashboard = () => {
 
         setUsers(usersResponse.users || []);
         setEvents(Array.isArray(eventsResponse.events) ? eventsResponse.events : []);
+        setEventStats({
+          intrusionLogs: eventsResponse.stats?.intrusionLogs ?? 0,
+          fireLogs: eventsResponse.stats?.fireLogs ?? 0,
+          securityLogs: eventsResponse.stats?.securityLogs ?? 0,
+        });
         setError('');
       } catch (loadError) {
         if (isMounted) {
@@ -63,12 +69,12 @@ const AdminDashboard = () => {
   const stats = useMemo(() => {
     const activeUsers = users.filter((item) => item.isActive).length;
     const disabledUsers = users.filter((item) => !item.isActive).length;
-    const intrusionLogs = events.filter((event) => isIntrusionEvent(event)).length;
-    const fireLogs = events.filter((event) => isFireEvent(event)).length;
-    const securityLogs = events.filter((event) => isAlertEvent(event)).length;
+    const intrusionLogs = eventStats.intrusionLogs || events.filter((event) => isIntrusionEvent(event)).length;
+    const fireLogs = eventStats.fireLogs || events.filter((event) => isFireEvent(event)).length;
+    const securityLogs = eventStats.securityLogs || events.filter((event) => isAlertEvent(event)).length;
 
     return { activeUsers, disabledUsers, intrusionLogs, fireLogs, securityLogs };
-  }, [users, events]);
+  }, [users, events, eventStats]);
 
   const securityEvents = useMemo(() => {
     return events.filter((event) => isAlertEvent(event));
